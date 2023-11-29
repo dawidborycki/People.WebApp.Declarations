@@ -15,6 +15,7 @@ spec:
         containers:
         - name: people-webapp
           image: people.azurecr.io/people.webapp:v1
+          imagePullPolicy: always
           ports:
           - containerPort: 5000            
 ---
