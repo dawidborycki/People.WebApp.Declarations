@@ -24,4 +24,4 @@ spec:
           - name: KeyVaultName
             value: kv-people
           - name: ManagedIdentityClientId
-            value: ""
+            value: "<paste_your_client_id_here>"
