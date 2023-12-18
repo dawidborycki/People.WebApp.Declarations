@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: people-webapp-deployment
+  annotations:    
+    kubernetes.io/change-cause: Pod name
+spec:
+  replicas: 2
+  selector:
+      matchLabels:
+        app: people-webapp
+  template:
+      metadata:
+        labels:
+            app: people-webapp
+      spec:
+        containers:
+        - name: people-webapp
+          image: people.azurecr.io/people.webapp:v3
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 5000
+          env:          
+          - name: UseInMemoryDatabase
+            value: "False"
+          - name: KeyVaultName
+            value: kv-people
+          - name: ManagedIdentityClientId
+            value: "<paste_your_client_id_here>"
