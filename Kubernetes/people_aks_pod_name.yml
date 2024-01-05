@@ -27,3 +27,8 @@ spec:
             value: kv-people
           - name: ManagedIdentityClientId
             value: "<paste_your_client_id_here>"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
