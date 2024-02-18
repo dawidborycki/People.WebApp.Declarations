@@ -9,4 +9,4 @@ spec:
     name: people-webapp-deployment
   minReplicas: 1
   maxReplicas: 20
-  targetCPUUtilizationPercentage: 75
+  targetCPUUtilizationPercentage: 25
