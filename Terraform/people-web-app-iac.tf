@@ -50,7 +50,7 @@ resource "azurerm_kubernetes_cluster" "kubernetes_cluster" {
 resource "azurerm_role_assignment" "acr_pull" {
   scope                = azurerm_container_registry.container_registry.id
   role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id
+  principal_id         = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id  
 }
 
 resource "azurerm_mssql_server" "sql_server" {
@@ -101,7 +101,7 @@ resource "azurerm_key_vault_access_policy" "self" {
   tenant_id    = data.azurerm_client_config.current.tenant_id
   object_id    = data.azurerm_client_config.current.object_id
   
-  secret_permissions = ["Get", "Set"]
+  secret_permissions = ["Get", "Set", "Delete"]
 }
 
 resource "azurerm_key_vault_access_policy" "cluster" {
@@ -109,5 +109,10 @@ resource "azurerm_key_vault_access_policy" "cluster" {
   tenant_id    = data.azurerm_client_config.current.tenant_id
   object_id    = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id
 
-  secret_permissions = ["Get"]
+  secret_permissions = ["Get", "List"]
+
+  depends_on = [    
+    azurerm_key_vault.key_vault,
+    azurerm_kubernetes_cluster.kubernetes_cluster    
+  ]
 }
