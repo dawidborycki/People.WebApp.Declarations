@@ -2,6 +2,15 @@ provider "azurerm" {
   features {}
 }
 
+terraform {
+  backend "azurerm" {
+    resource_group_name   = "rg-aks-people"
+    storage_account_name  = "peoplewebappstore"
+    container_name        = "terraform"
+    key                   = "terraform.tfstate"    
+  }
+}
+
 resource "azurerm_resource_group" "rg-tf" {
   name     = "rg-aks-people-tf"
   location = "East US"
@@ -22,7 +31,7 @@ resource "azurerm_kubernetes_cluster" "kubernetes_cluster" {
   dns_prefix          = "aks-people-tf-dns"
 
   default_node_pool {
-    name                = "agentpool"    
+    name                = "agentpool"
     vm_size             = "Standard_DS2_v2"    
     enable_auto_scaling = true
     min_count           = 1
@@ -48,23 +57,24 @@ resource "azurerm_kubernetes_cluster" "kubernetes_cluster" {
 }
 
 resource "azurerm_role_assignment" "acr_pull" {
-  scope                = azurerm_container_registry.container_registry.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id  
+  principal_id                     = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id
+  role_definition_name             = "AcrPull"
+  scope                            = azurerm_container_registry.container_registry.id
+  skip_service_principal_aad_check = true
 }
 
 resource "azurerm_mssql_server" "sql_server" {
-  name                         = "aks-sql-people-tf"
-  resource_group_name          = azurerm_resource_group.rg-tf.name
-  location                     = azurerm_resource_group.rg-tf.location
-  version                      = "12.0"
-  administrator_login          = "azure"
-  administrator_login_password = "P@ssw0rD"
+  name                          = "aks-sql-people-tf"
+  resource_group_name           = azurerm_resource_group.rg-tf.name
+  location                      = azurerm_resource_group.rg-tf.location
+  version                       = "12.0"
+  administrator_login           = "azure"
+  administrator_login_password  = "P@ssw0rD"
   public_network_access_enabled = true
 }
 
 resource "azurerm_mssql_database" "sql_database" {
-  name                = "people"  
+  name                = "people"
   server_id           = azurerm_mssql_server.sql_server.id 
   sku_name            = "Basic"
 }
@@ -94,6 +104,11 @@ resource "azurerm_key_vault_secret" "key_vault_secret" {
   name         = "connection-string"
   value        = local.sql_connection_string
   key_vault_id = azurerm_key_vault.key_vault.id
+
+  depends_on = [
+    azurerm_key_vault_access_policy.self, 
+    azurerm_kubernetes_cluster.kubernetes_cluster
+  ]
 }
 
 resource "azurerm_key_vault_access_policy" "self" {
@@ -102,13 +117,20 @@ resource "azurerm_key_vault_access_policy" "self" {
   object_id    = data.azurerm_client_config.current.object_id
   
   secret_permissions = ["Get", "Set", "Delete"]
+  secret_permissions = ["Get", "Set", "Delete"]
 }
 
 resource "azurerm_key_vault_access_policy" "cluster" {
-  key_vault_id = azurerm_key_vault.key_vault.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id
+  key_vault_id   = azurerm_key_vault.key_vault.id
+  tenant_id      = data.azurerm_client_config.current.tenant_id
+  object_id      = azurerm_kubernetes_cluster.kubernetes_cluster.kubelet_identity[0].object_id
 
+  secret_permissions = ["Get", "List"]
+
+  depends_on = [    
+    azurerm_key_vault.key_vault,
+    azurerm_kubernetes_cluster.kubernetes_cluster    
+  ]
   secret_permissions = ["Get", "List"]
 
   depends_on = [    
