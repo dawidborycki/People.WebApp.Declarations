@@ -121,8 +121,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }} 
 
       - name: Configure Kubernetes context
-        run: az aks get-credentials -g ${{ needs.infrastructure.outputs.rg_name }} 
-            -n ${{ needs.infrastructure.outputs.cluster_name }}
+        run: az aks get-credentials -g ${{ needs.infrastructure.outputs.rg_name }} -n ${{ needs.infrastructure.outputs.cluster_name }}
 
       - name: Update values.yaml
         env:
