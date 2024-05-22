@@ -21,13 +21,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3  
-
+        uses: actions/checkout@v4
+      
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          
+            
       - name: Configure Azure credentials from GitHub Secret
         run: |
           echo "ARM_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.clientId')" >> $GITHUB_ENV
@@ -35,27 +35,27 @@ jobs:
           echo "ARM_SUBSCRIPTION_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.subscriptionId')" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r '.tenantId')" >> $GITHUB_ENV
         shell: bash
-        
+          
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2.0.3   
         with:
           terraform_wrapper: false   
-
+      
       - name: Terraform Init        
         working-directory: ./iac
         run: |
           STORAGE_ACCOUNT_NAME=$(grep 'storage_account_name' backend.tf | awk '{print $3}' | tr -d '"')
           RESOURCE_GROUP_NAME=$(grep 'resource_group_name' backend.tf | awk '{print $3}' | tr -d '"')
-        
+          
           ARM_ACCESS_KEY=$(az storage account keys list -n $STORAGE_ACCOUNT_NAME -g $RESOURCE_GROUP_NAME --query '[0].value' -o tsv)
           echo "ARM_ACCESS_KEY=${ARM_ACCESS_KEY}" >> $GITHUB_ENV
-        
+          
           terraform init
-
+      
       - name: Terraform Plan        
         working-directory: ./iac
         run: terraform plan
-
+      
       - name: Terraform Apply
         working-directory: ./iac
         id: terraform-apply
@@ -67,31 +67,32 @@ jobs:
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
           echo "aks_pool_node_name=$(terraform output -raw aks_pool_node_name)" >> $GITHUB_OUTPUT
           echo "key_vault_name=$(terraform output -raw key_vault_name)" >> $GITHUB_OUTPUT
-
+    
   build-and-push-docker-image:
     runs-on: ubuntu-latest    
     needs: infrastructure
     outputs:
       fq_image_name: ${{steps.build-image.outputs.FQ_IMAGE_NAME}}
-      
+              
     steps:    
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }} 
-
+  
       - name: Login to Azure Container Registry
         run: az acr login -n ${{ needs.infrastructure.outputs.acr_name }}
-
+  
       - name: Count existing tags and configure the image tag    
         run: |
-          COUNT=$(az acr repository show-tags -n ${{ needs.infrastructure.outputs.acr_name }} --repository $IMAGE_NAME -o tsv | wc -l)
+          COUNT=$(az acr repository show-tags -n ${{ needs.infrastructure.
+              outputs.acr_name }} --repository $IMAGE_NAME -o tsv | wc -l)
           IMAGE_TAG=v$(expr $COUNT + 1)      
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-
+  
       - name: Build and push Docker image
         id: build-image
         run: |
@@ -100,20 +101,20 @@ jobs:
           echo "FQ_IMAGE_NAME=$FQ_IMAGE_NAME" >> $GITHUB_OUTPUT
           docker build -t $FQ_IMAGE_NAME .
           docker push $FQ_IMAGE_NAME
-
+  
       - name: Logout from Azure Container Registry
         run: docker logout ${{ needs.infrastructure.outputs.acr_login_server }}
         
       - name: Cleanup Docker images
-        run: docker image rm $FQ_IMAGE_NAME  
+        run: docker image rm $FQ_IMAGE_NAME
 
-  deploy-to-aks-with-helm:  
+  deploy-to-aks-with-helm:
     runs-on: ubuntu-latest
     needs: [build-and-push-docker-image, infrastructure]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         
       - name: Login to Azure
         uses: azure/login@v1
@@ -121,7 +122,8 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }} 
 
       - name: Configure Kubernetes context
-        run: az aks get-credentials -g ${{ needs.infrastructure.outputs.rg_name }} -n ${{ needs.infrastructure.outputs.cluster_name }}
+        run: az aks get-credentials -g ${{ needs.infrastructure.outputs.rg_name }} 
+            -n ${{ needs.infrastructure.outputs.cluster_name }}
 
       - name: Update values.yaml
         env:
